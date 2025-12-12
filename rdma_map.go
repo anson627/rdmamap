@@ -37,6 +37,12 @@ const (
 	nibbleBitSize  = 4
 	loopBackIfName = "lo"
 
+	// GID format constants
+	gidParts            = 8 // Number of colon-separated parts in a GID
+	portGUIDStartIndex  = 4 // Port GUID starts at index 4 in the GID parts
+	gidPartLength       = 4 // Each GID part is 4 hex characters
+	hexBytePairLength   = 2 // 2 hex characters represent 1 byte
+
 	ReadOnlyPermissions = 0444
 )
 
@@ -352,24 +358,24 @@ func getPortGUID(rdmaDeviceName, port string) ([]byte, error) {
 	// Parse GID format: "fe80:0000:0000:0000:0015:5dff:fd34:025b\n"
 	gidStr := strings.TrimSpace(string(data))
 	parts := strings.Split(gidStr, ":")
-	if len(parts) != 8 {
+	if len(parts) != gidParts {
 		return nil, fmt.Errorf("invalid GID format: %s", gidStr)
 	}
 
 	// Extract last 4 groups (8 bytes) which represent the port GUID
 	var portGUID []byte
-	for i := 4; i < 8; i++ {
+	for i := portGUIDStartIndex; i < gidParts; i++ {
 		// Each part is 4 hex digits (2 bytes)
-		if len(parts[i]) != 4 {
+		if len(parts[i]) != gidPartLength {
 			return nil, fmt.Errorf("invalid GID part: %s", parts[i])
 		}
 		// Parse first byte
-		b1, err := strconv.ParseUint(parts[i][0:2], 16, 8)
+		b1, err := strconv.ParseUint(parts[i][0:hexBytePairLength], 16, 8)
 		if err != nil {
 			return nil, err
 		}
 		// Parse second byte
-		b2, err := strconv.ParseUint(parts[i][2:4], 16, 8)
+		b2, err := strconv.ParseUint(parts[i][hexBytePairLength:gidPartLength], 16, 8)
 		if err != nil {
 			return nil, err
 		}
