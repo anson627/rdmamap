@@ -99,17 +99,18 @@ func isDirForRdmaDevice(rdmaDeviceName, dirName string) bool {
 	return strings.Trim(string(data), "\n") == rdmaDeviceName
 }
 
-func getCharDevice(rdmaDeviceName, classDir, charDevPrefix string) (string, error) {
+func getCharDevices(rdmaDeviceName, classDir, charDevPrefix string) []string {
 	fd, err := os.Open(classDir)
 	if err != nil {
-		return "", err
+		return nil
 	}
 	defer fd.Close()
 	fileInfos, err := fd.Readdir(-1)
 	if err != nil {
-		return "", nil
+		return nil
 	}
 
+	devices := make([]string, 0, len(fileInfos))
 	for i := range fileInfos {
 		if fileInfos[i].Name() == "." || fileInfos[i].Name() == prevDir {
 			continue
@@ -121,74 +122,41 @@ func getCharDevice(rdmaDeviceName, classDir, charDevPrefix string) (string, erro
 		if !isDirForRdmaDevice(rdmaDeviceName, dirName) {
 			continue
 		}
-		deviceFile := filepath.Join("/dev/infiniband", fileInfos[i].Name()) //nolint:gocritic
-		return deviceFile, nil
+		devices = append(devices, filepath.Join(RdmaDeviceDir, fileInfos[i].Name()))
 	}
-	return "", fmt.Errorf("no ucm device found")
+	return devices
 }
 
-func getUcmDevice(rdmaDeviceName string) (string, error) {
-	return getCharDevice(rdmaDeviceName,
-		RdmaIbUcmDir,
-		RdmaUcmFilePrefix)
-}
-
-func getIssmDevice(rdmaDeviceName string) (string, error) {
-	return getCharDevice(rdmaDeviceName,
-		RdmaUmadDir,
-		RdmaIssmFilePrefix)
-}
-
-func getUmadDevice(rdmaDeviceName string) (string, error) {
-	return getCharDevice(rdmaDeviceName,
-		RdmaUmadDir,
-		RdmaUmadFilxPrefix)
-}
-
-func getUverbDevice(rdmaDeviceName string) (string, error) {
-	return getCharDevice(rdmaDeviceName,
-		RdmaUverbsDir,
-		RdmaUverbsFilxPrefix)
-}
-
-func getRdmaUcmDevice() (string, error) {
+func getRdmaUcmDevices() []string {
 	info, err := os.Stat(RdmaUcmDevice)
 	if err != nil {
-		return "", err
+		return nil
 	}
 	if info.Name() == "rdma_cm" {
-		return RdmaUcmDevice, nil
+		return []string{RdmaUcmDevice}
 	}
-
-	return "", fmt.Errorf("invalid file name rdma_cm")
+	return nil
 }
 
-// Returns a list of character device absolute path for a requested
-// rdmaDeviceName.
+// GetRdmaCharDevices returns a list of character device absolute paths for a
+// requested rdmaDeviceName. For multi-port RDMA devices, all matching
+// character devices of each type are returned (e.g., all umad and issm
+// devices across all ports).
 // Returns nil if no character devices are found.
 func GetRdmaCharDevices(rdmaDeviceName string) []string {
 	var rdmaCharDevices []string
 
-	ucm, err := getUcmDevice(rdmaDeviceName)
-	if err == nil {
-		rdmaCharDevices = append(rdmaCharDevices, ucm)
-	}
-	issm, err := getIssmDevice(rdmaDeviceName)
-	if err == nil {
-		rdmaCharDevices = append(rdmaCharDevices, issm)
-	}
-	umad, err := getUmadDevice(rdmaDeviceName)
-	if err == nil {
-		rdmaCharDevices = append(rdmaCharDevices, umad)
-	}
-	uverb, err := getUverbDevice(rdmaDeviceName)
-	if err == nil {
-		rdmaCharDevices = append(rdmaCharDevices, uverb)
-	}
-	rdmaCm, err := getRdmaUcmDevice()
-	if err == nil {
-		rdmaCharDevices = append(rdmaCharDevices, rdmaCm)
-	}
+	rdmaCharDevices = append(rdmaCharDevices,
+		getCharDevices(rdmaDeviceName, RdmaIbUcmDir, RdmaUcmFilePrefix)...)
+	rdmaCharDevices = append(rdmaCharDevices,
+		getCharDevices(rdmaDeviceName, RdmaUmadDir, RdmaIssmFilePrefix)...)
+	rdmaCharDevices = append(rdmaCharDevices,
+		getCharDevices(rdmaDeviceName, RdmaUmadDir, RdmaUmadFilxPrefix)...)
+	rdmaCharDevices = append(rdmaCharDevices,
+		getCharDevices(rdmaDeviceName, RdmaUverbsDir, RdmaUverbsFilxPrefix)...)
+
+	rdmaCharDevices = append(rdmaCharDevices,
+		getRdmaUcmDevices()...)
 
 	return rdmaCharDevices
 }
