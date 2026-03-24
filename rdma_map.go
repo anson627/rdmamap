@@ -22,11 +22,11 @@ const (
 
 	RdmaUverbsFilxPrefix = "uverbs"
 
-	RdmaGidAttrDir     = "gid_attrs" //nolint:stylecheck,revive
-	RdmaGidAttrNdevDir = "ndevs"     //nolint:stylecheck,revive
+	RdmaGidAttrDir     = "gid_attrs" //nolint:revive
+	RdmaGidAttrNdevDir = "ndevs"     //nolint:revive
 	RdmaPortsdir       = "ports"
 
-	RdmaNodeGuidFile = "node_guid" //nolint:stylecheck,revive
+	RdmaNodeGuidFile = "node_guid" //nolint:revive
 
 	RdmaCountersDir   = "counters"
 	RdmaHwCountersDir = "hw_counters"
@@ -221,7 +221,7 @@ func GetPorts(rdmaDeviceName string) []string {
 }
 
 //nolint:prealloc
-func getNetdeviceIds(rdmaDeviceName, port string) []string {
+func getNetdeviceIDs(rdmaDeviceName, port string) []string {
 	var indices []string
 
 	dir := filepath.Join(RdmaClassDir, rdmaDeviceName, RdmaPortsdir, port,
@@ -277,7 +277,7 @@ func getRdmaDeviceForEth(netdevName string) (string, error) {
 	for _, dev := range devices {
 		ports := GetPorts(dev)
 		for _, port := range ports {
-			indices := getNetdeviceIds(dev, port)
+			indices := getNetdeviceIDs(dev, port)
 			for _, index := range indices {
 				found := isNetdevForRdma(dev, port, index, netdevName)
 				if found {
@@ -351,11 +351,12 @@ func GetRdmaDeviceForNetdevice(netdevName string) (string, error) {
 		return "", err
 	}
 	netAttr := handle.Attrs()
-	if netAttr.EncapType == "ether" {
+	switch netAttr.EncapType {
+	case "ether":
 		return getRdmaDeviceForEth(netdevName)
-	} else if netAttr.EncapType == "infiniband" {
+	case "infiniband":
 		return getRdmaDeviceForIb(netAttr)
-	} else {
+	default:
 		return "", fmt.Errorf("unknown device type")
 	}
 }

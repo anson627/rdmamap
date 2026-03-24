@@ -1,10 +1,10 @@
 module github.com/Mellanox/rdmamap
 
-go 1.20
+go 1.25.0
 
 require (
-	github.com/vishvananda/netlink v1.1.0
-	github.com/vishvananda/netns v0.0.4
+	github.com/vishvananda/netlink v1.3.1
+	github.com/vishvananda/netns v0.0.5
 )
 
-require golang.org/x/sys v0.10.0 // indirect
+require golang.org/x/sys v0.42.0 // indirect
